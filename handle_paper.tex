@@ -1,0 +1,61 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{sglib and libhandlegraph: High-performance sequence graph implementations for graphical pan-genomics}
+\author{Jordan M. Eizenga \and Erik Garrison \and Adam M. Novak \and Emily Kobayashi \and Benedict Paten}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    TODO
+\end{abstract}
+
+\section{Introduction}
+
+With ever-falling sequencing costs, the genomics community has produced increasingly large genomic data sets. For some species there have now been many individuals sequenced. For instance, hundreds of thousands of deeply sequenced human genomes are now available. The novel challenges of analyzing data sets of this scale have led to the development of computational pan-genomics, a new domain of research in bioinformatics. This field is concerned with utilizing and interpreting whole populations of genomes, rather than individual genomes.
+
+Much of the research in computational pan-genomics has coalesced around graph-based approaches for representing populations of genomes. These graphs  contrast with existing genomic methods that represent a genome as a string. In addition to representing DNA sequence, graph data structures provide a modeling language to represent different types of genomic variation like substitutions, insertions, and deletions, as well as other more complex genomic events. 
+
+The transition from string- to graph-based data structures creates certain computational challenges. Graphs must represent topology in addition to sequence. However, managing large eukaryotic genomes already taxes many computational environments' memory. Moreover, backwards compatibility often dictates that the graphs also keep track of particular sequences of interest, namely reference genomes. This further increases the burden on computer memory. On top of this, there is significant impetus to make the graph data structures computationally efficient, since they are frequently the core data structure in pan-genomics applications. In many ways, these challenges mirror the challenges of representing de novo assembly graphs, which continues to be a substantial area of bioinformatics research. 
+
+We have developed C++ libraries to implement and utilize high-performance sequence graphs for graphical pan-genomics applications. We hope that this resource will reduce the need for individual research groups to continually reimplement these core data structures---particularly as the field of computational pan-genomics continues to grow. Our library consists of two components. First, we have developed an abstract interface for sequence graphs, based on our experience in the VG project. Second, we have developed three concrete implementations of the sequence graph interface representing a range of computational tradeoffs. 
+
+\section{Implementation}
+
+\subsection{Data model}
+
+Our libraries adopt node-labeled bidirected graphs as a formalism for sequence graphs. In a bidirected graph, nodes are considered to have two ``sides", and edges connect two sides rather than two nodes. Directed graphs can be seen as a special case in which all edges connect the left side of one node to the right side of another. In bidirected sequence graphs, a node's sides correspond to the 5' and 3' end of its DNA sequence.  Longer sequences can be formed by concatenating the sequences of the nodes along a walk through the graph. In a bidirected graph, walks must leave a node out of the opposite side that they enter it. We interpret walks that traverse a node from the 3' side to the 5' as using the node's reverse complement strand. This is the primary benefit of the bidirected formalism over a simpler directed graph: there is a natural encoding of DNA strandedness.
+
+Applications are often particularly interested in specific paths through the graph. Most importantly, a species' reference sequence often corresponds to a path. Applications must be able to access and compute on this path in order to maintain compatibility with analyses based on the reference sequence. Another case is when sequence are constructed using multiple sequence alignment. The input sequences are typically preserved as paths through the resulting sequence graph. Because paths like these are so frequently important in practice, our formalism also includes paths embedded in the graph as a first class object.
+
+\subsection{The handle graph interface}
+
+Our library \texttt{libhandlegraph} describes a generic interface that exposes basic operations on our sequence graph data model. The interface uses ``handles'' in order to remain agnostic about the backing implementation of the graph. That is, the interface requires sequence graph implementations to provide handles to important graph features such as nodes, edges, full paths, and steps along a path. The implementation is then required to be able to perform basic operations on that graph feature when given its handle, such as retrieving a node's edges. However, the contents of a handle are unspecified, which gives significant flexibility to the implementation. In addition, a benefit of this design is that any algorithm designed for one handle graph implementation can be applied to all other implementations.
+
+\subsection{Graph implementations}
+
+Our second library \texttt{sglib} consists of three concrete implementations of the handle graph interface. Each implementation represents different performance tradeoffs in terms of speed and memory use. Because these graph implementations all utilize a uniform interface, tool developers can easily experiment with different options based on their computational needs. All of the graph implementations are dynamic.
+
+\subsubsection{HashGraph}
+
+This implementation has speed as its primary goal. The core adjacency list is implemented using a high performance hash table. Most of the smaller component data structures are uncompressed STL objects, so they can easily be computed on without a translation step. Embedded paths are implemented as doubly-linked lists. 
+
+\subsubsection{PackGraph}
+
+This implementation focuses on having a low memory footprint. Most of its component data structures are---conceptually speaking---linked lists. However, they are implemented using bit-compressed integer vectors, where pointers are produced by treating some of the integer entries as indexes into the vector that contains them. The vector uses a windowed, dynamic bit compression scheme in which only one value within a window is maintained at its full bit width. The remaining entries are represented as differences from this value. In the typical case where adjacent entries in the vector are highly correlated, this helps keep the bit width low and thereby compression high.
+
+\subsubsection{ODGI}
+
+TODO: brief description of implementation
+
+\section{Evaluation}
+
+TODO: generate data and discuss tradeoffs between graph implementations
+
+Mention integration into the VG toolkit
+
+% TODO: we should write a user-friendly guide on GitHub for how to use handle graphs
+
+\end{document}
